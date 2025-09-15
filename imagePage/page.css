@@ -1,0 +1,37 @@
+.header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 10px 40px;
+}
+
+.container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 5px
+}
+
+.imageDiv {
+    width: 300px;
+    border: 1px solid black;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 5px;
+}
+
+.imageDiv>img {
+    object-fit: contain;
+    height: 300px;
+}
+
+progress {
+    background-color: transparent;
+}
+
+progress::-webkit-progress-value {
+    transition: all 1s ease;
+    background-color: orange;
+}
