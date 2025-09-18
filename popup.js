@@ -1,38 +1,66 @@
-const grabBtn = document.getElementById("grabBtn");
-const checkImageTag = document.getElementById("testBtn");
+const showNewTabWithImage = document.getElementById("showSelectImage");
+const selectImage = document.getElementById("selectImage");
 
-grabBtn.addEventListener("click", () => {
-  // Получить активную вкладку браузера
-  chrome.tabs.query({ active: true }, function (tabs) {
-    var tab = tabs[0];
-    // и если она есть, то выполнить на ней скрипт
-    if (tab) {
-      execScript(tab);
-    } else {
-      alert("There are no active tabs");
-    }
+// Получение активной вкладки текущего окна
+function getActiveTab() {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (chrome.runtime.lastError) {
+        return reject(chrome.runtime.lastError);
+      }
+      if (tabs.length > 0) {
+        resolve(tabs[0]);
+      } else {
+        reject("No active tabs");
+      }
+    });
   });
+}
+
+// Обработчик первой кнопки
+showNewTabWithImage.addEventListener("click", async () => {
+  try {
+    const tab = await getActiveTab();
+    execScript(tab);
+  } catch (error) {
+    alert(error);
+  }
 });
 
-// на первом шаге выбираем основной блок с картинкой
-checkImageTag.addEventListener("click", () => {
-  // Получить активную вкладку браузера
-  chrome.tabs.query({ active: true }, function (tabs) {
-    var tab = tabs[0];
-    // и если она есть, то выполнить на ней скрипт
-    if (tab) {
-      chrome.scripting
-        .executeScript({
-          target: { tabId: tab.id, allFrames: true },
-          func: trackMouseHover,
-        })
-        .then((res) => {
-          console.log(res.results);
-        });
-    } else {
-      alert("There are no active tabs");
-    }
-  });
+// Заготовка для второй кнопки
+selectImage.addEventListener("click", async () => {
+  try {
+    const tab = await getActiveTab();
+
+    if (!tab) return alert("There are no active tabs");
+    chrome.scripting
+      .executeScript({
+        target: { tabId: tab.id, allFrames: true },
+        func: trackMouseHover,
+      })
+      .then((res) => {
+        console.log(res.results);
+      });
+  } catch (error) {
+    alert(error);
+  }
+});
+
+/*
+/** Слушаем сообщения  и рендерим превью в окошке расширения
+ */
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "selectedImages") {
+    const container = document.querySelector(".preview");
+    container.innerHTML = "";
+    request.selectedImages.forEach((src) => {
+      const img = document.createElement("img");
+      img.src = src;
+      img.style.maxWidth = "80px";
+      img.style.margin = "5px";
+      container.appendChild(img);
+    });
+  }
 });
 
 /**
@@ -44,20 +72,31 @@ function trackMouseHover() {
    * @param targetElement {Node}
    * @param iter {number} начальное кол-во итераций
    */
-  const getParentNode = (targetElement, iter = 0) => {
-    let iteration = iter;
-
-    if (iteration > 5) {
-      console.log("div not found getParentNode");
-      return null;
+  const getParentNode = (targetElement, iter = 0, foundDivs = []) => {
+    // Остановимся не более чем через 5 итераций или при отсутствии родителя
+    if (iter > 5 || !targetElement.parentNode) {
+      // Если не нашли ни одного div — вернём null
+      if (foundDivs.length === 0) return null;
+      // Если не нашли div с нужным классом — вернём второй div, если есть, иначе самый ближайший
+      return foundDivs.length > 1 ? foundDivs[1] : foundDivs[0];
     }
 
-    if (targetElement.parentNode.tagName !== "DIV") {
-      iteration = ++iteration;
-      return getParentNode(targetElement.parentNode, iteration);
-    } else {
-      return targetElement.parentNode;
+    const parent = targetElement.parentNode;
+
+    if (parent.tagName === "DIV") {
+      foundDivs.push(parent);
+      // Проверяем наличие "post" или "content" в классе
+      if (
+        parent.className &&
+        (parent.className.includes("post") ||
+          parent.className.includes("content"))
+      ) {
+        return parent;
+      }
     }
+
+    // Идём дальше по цепочке родителей
+    return getParentNode(parent, ++iter, foundDivs);
   };
 
   /**
@@ -74,6 +113,7 @@ function trackMouseHover() {
   }
 
   let targetElements = null;
+  let allImgs = [];
 
   // Основная функция обработки движения мыши
   const handleMouseMove = debounce((event) => {
@@ -85,23 +125,47 @@ function trackMouseHover() {
           }
         }
       }
-      return console.log("mouse over not image tag");
+      return null;
+    }
+
+    function clearBorders() {
+      if (!lastImgs || !lastImgs.length) return;
+      lastImgs.forEach((i) => {
+        i.style.border = "";
+      });
+      lastImgs = [];
     }
 
     targetElements = event.target;
     const par = getParentNode(targetElements);
-    if (par) {
-      const cn = par.getAttribute("class")?.split(" ")[0];
-      par.setAttribute("select-image", true);
-      const img = Array.from(document.querySelectorAll(`.${cn} img`));
-      targetElements = img;
 
-      if (img && img.length) {
-        for (let i of img) {
+    if (par) {
+      const className = par.className.split(" ")[0]; // берем первый класс
+
+      if (className) {
+        // ищем всех родителей
+        const allParents = Array.from(
+          document.querySelectorAll(`div.${className}`)
+        );
+        allParents.forEach((parentDiv) => {
+          allImgs.push(...parentDiv.querySelectorAll("img"));
+        });
+      }
+
+      if (allImgs && allImgs.length) {
+        // выделяем цветом
+        for (let i of allImgs) {
           if (i && i.tagName === "IMG") {
-            i.style.border = "2px solid black";
+            i.style.border = "2px solid red";
           }
         }
+
+        // потом убираем дубликаты
+        const nI = [...new Set(allImgs.map((i) => i.currentSrc))];
+        chrome.runtime.sendMessage({
+          action: "selectedImages",
+          selectedImages: nI,
+        });
       }
     }
 

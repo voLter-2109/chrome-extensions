@@ -1,17 +1,23 @@
 {
   "name": "Image Grabber",
-  "description": "Extract all images from current web page",
-  "version": "1.0",
+  "description": "Extract all images from the current web page",
+  "version": "1.1",
   "manifest_version": 3,
   "icons": {
-    "48": "icons/icon48.png"
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   },
+  "permissions": ["activeTab", "scripting", "downloads"],
   "action": {
-    "default_popup": "popup.html",
-    "default_icon": "icons/icon48.png",
-    "default_title": "Image Grabber"
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "Image Grabber",
+    "default_popup": "popup.html"
   },
-  "permissions": ["scripting", "activeTab", "downloads", "storage"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
