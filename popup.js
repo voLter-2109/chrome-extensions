@@ -51,6 +51,7 @@ selectImage.addEventListener("click", async () => {
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "selectedImages") {
+    console.log(request.selectedImages);
     const container = document.querySelector(".preview");
     container.innerHTML = "";
     request.selectedImages.forEach((src) => {
@@ -147,12 +148,15 @@ function trackMouseHover() {
         const allParents = Array.from(
           document.querySelectorAll(`div.${className}`)
         );
+        console.log(1);
         allParents.forEach((parentDiv) => {
           allImgs.push(...parentDiv.querySelectorAll("img"));
         });
+        console.log(2);
       }
 
       if (allImgs && allImgs.length) {
+        console.log("allImgs2", allImgs);
         // выделяем цветом
         for (let i of allImgs) {
           if (i && i.tagName === "IMG") {
