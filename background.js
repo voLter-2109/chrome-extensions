@@ -14,44 +14,42 @@ let downloadState = {
 };
 
 // Обработчик сообщений из контент-скриптов
-// chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-//   console.log("request", request);
-//   downloadState = {
-//     ...downloadState,
-//     status: request.action,
-//     urls: request?.urls || downloadState.urls,
-//     totalFiles: request?.urls.length || downloadState.totalFiles,
-//   };
-//   console.log("downloadState", downloadState);
-//   startDownload(request.action);
-//   sendResponse({
-//     response: "createNewTab",
-//   });
-//   return true;
-// });
-
-
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log("request", request);
+  downloadState = {
+    ...downloadState,
+    status: request.action,
+    urls: request?.urls || downloadState.urls,
+    totalFiles: request?.urls.length || downloadState.totalFiles,
+  };
+  console.log("downloadState", downloadState);
+  startDownload(request.action);
+  sendResponse({
+    response: "createNewTab",
+  });
+  return true;
+});
 
 // Сброс состояния
-function resetDownloadState() {
-  downloadState = {
-    status: statusLoading.def,
-    currentIndex: 0,
-    totalFiles: 0,
-    urls: [],
-  };
+// function resetDownloadState() {
+//   downloadState = {
+//     status: statusLoading.def,
+//     currentIndex: 0,
+//     totalFiles: 0,
+//     urls: [],
+//   };
 
-  chrome.runtime.sendMessage({
-    action: "changeProgressBar",
-    total: 0,
-    current: 0,
-  });
+//   chrome.runtime.sendMessage({
+//     action: "changeProgressBar",
+//     total: 0,
+//     current: 0,
+//   });
 
-  chrome.runtime.sendMessage({
-    action: "unDisabledOneBtn",
-    disabled: false,
-  });
-}
+//   chrome.runtime.sendMessage({
+//     action: "unDisabledOneBtn",
+//     disabled: false,
+//   });
+// }
 
 // Основная функция загрузки
 async function startDownload(action) {

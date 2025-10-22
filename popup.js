@@ -1,5 +1,10 @@
 const showNewTabWithImage = document.getElementById("showSelectImage");
 const selectImage = document.getElementById("selectImage");
+const container = document.getElementById("preview");
+const vipergirls = document.getElementById("vipergirls");
+const selectSelector = document.getElementById("selectSelector");
+const scrollSelectImage = document.getElementById("scrollSelectImage");
+const getImageArray = document.getElementById("getImageArray");
 
 // Получение активной вкладки текущего окна
 function getActiveTab() {
@@ -21,7 +26,17 @@ function getActiveTab() {
 showNewTabWithImage.addEventListener("click", async () => {
   try {
     const tab = await getActiveTab();
-    execScript(tab);
+    execScript(tab, "joyreactor", null);
+  } catch (error) {
+    alert(error);
+  }
+});
+
+// Обработчик первой кнопки
+vipergirls.addEventListener("click", async () => {
+  try {
+    const tab = await getActiveTab();
+    execScript(tab, "vipergirls", null);
   } catch (error) {
     alert(error);
   }
@@ -46,13 +61,43 @@ selectImage.addEventListener("click", async () => {
   }
 });
 
+selectSelector.addEventListener("click", async () => {
+  try {
+    const tab = await getActiveTab();
+
+    if (!tab) return alert("There are no active tabs");
+
+    let selector = prompt("What's your selector?");
+
+    if (selector !== null && selector.trim() !== "") {
+      execScript(tab, "any", selector);
+    } else console.log("don`t select selector");
+  } catch (error) {
+    alert(error);
+  }
+});
+
+getImageArray.addEventListener("click", async () => {
+  try {
+    const tab = await getActiveTab();
+
+    if (!tab) return alert("There are no active tabs");
+
+    let array = prompt("What's your selector?");
+    console.log(array);
+    if (array && array.length) {
+      openImagesPage(array);
+    }
+  } catch (error) {
+    alert(error);
+  }
+});
+
 /*
 /** Слушаем сообщения  и рендерим превью в окошке расширения
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "selectedImages") {
-    console.log(request.selectedImages);
-    const container = document.querySelector(".preview");
     container.innerHTML = "";
     request.selectedImages.forEach((src) => {
       const img = document.createElement("img");
@@ -64,42 +109,51 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+// навешивает слежение за селектором
+function trackUniqueImageUrls(selector) {
+  const container = document.querySelector(selector);
+  if (!container) {
+    console.error("Элемент не найден по селектору:", selector);
+    return;
+  }
+
+  const imageUrls = [];
+
+  // Функция проверки новых <img>
+  const updateImageUrls = () => {
+    const imgs = container.querySelectorAll("img");
+    imgs.forEach((img) => {
+      const url = img.src;
+      if (url && !imageUrls.includes(url)) {
+        imageUrls.push(url);
+        console.log("Новый url добавлен:", url);
+      }
+    });
+  };
+
+  // Сразу обрабатываем уже имеющиеся <img>
+  updateImageUrls();
+
+  // Отслеживаем изменения детей
+  const observer = new MutationObserver((mutationsList) => {
+    mutationsList.forEach(() => {
+      updateImageUrls();
+    });
+  });
+
+  observer.observe(container, { childList: true, subtree: true });
+
+  // Для доступа к текущему массиву можно вернуть геттер или сам массив
+  return {
+    getUrls: () => [...imageUrls], // Копия массива
+    disconnect: () => observer.disconnect(), // Остановить слежение
+  };
+}
+
 /**
  * Добавляем обработчик движения мыши с задержкой (debounce)
  */
 function trackMouseHover() {
-  /**
-   * получаем родительский элемент передаваемого элемента (рекурсия)
-   * @param targetElement {Node}
-   * @param iter {number} начальное кол-во итераций
-   */
-  const getParentNode = (targetElement, iter = 0, foundDivs = []) => {
-    // Остановимся не более чем через 5 итераций или при отсутствии родителя
-    if (iter > 5 || !targetElement.parentNode) {
-      // Если не нашли ни одного div — вернём null
-      if (foundDivs.length === 0) return null;
-      // Если не нашли div с нужным классом — вернём второй div, если есть, иначе самый ближайший
-      return foundDivs.length > 1 ? foundDivs[1] : foundDivs[0];
-    }
-
-    const parent = targetElement.parentNode;
-
-    if (parent.tagName === "DIV") {
-      foundDivs.push(parent);
-      // Проверяем наличие "post" или "content" в классе
-      if (
-        parent.className &&
-        (parent.className.includes("post") ||
-          parent.className.includes("content"))
-      ) {
-        return parent;
-      }
-    }
-
-    // Идём дальше по цепочке родителей
-    return getParentNode(parent, ++iter, foundDivs);
-  };
-
   /**
    * функция задержки
    * @param func {callback}
@@ -113,64 +167,16 @@ function trackMouseHover() {
     };
   }
 
-  let targetElements = null;
-  let allImgs = [];
-
   // Основная функция обработки движения мыши
   const handleMouseMove = debounce((event) => {
-    if (event.target && event.target.tagName !== "IMG") {
-      if (targetElements && targetElements.length) {
-        for (let i of targetElements) {
-          if (i && i.tagName === "IMG") {
-            i.style.border = "none";
-          }
-        }
-      }
-      return null;
-    }
-
-    function clearBorders() {
-      if (!lastImgs || !lastImgs.length) return;
-      lastImgs.forEach((i) => {
-        i.style.border = "";
+    if (event.target && event.target.tagName === "IMG") {
+      chrome.runtime.sendMessage({
+        action: "selectedImages",
+        selectedImages: [
+          ...document.querySelectorAll(`.${event.target.classList[0]}`),
+        ].map((i) => i.src),
       });
-      lastImgs = [];
-    }
-
-    targetElements = event.target;
-    const par = getParentNode(targetElements);
-
-    if (par) {
-      const className = par.className.split(" ")[0]; // берем первый класс
-
-      if (className) {
-        // ищем всех родителей
-        const allParents = Array.from(
-          document.querySelectorAll(`div.${className}`)
-        );
-        console.log(1);
-        allParents.forEach((parentDiv) => {
-          allImgs.push(...parentDiv.querySelectorAll("img"));
-        });
-        console.log(2);
-      }
-
-      if (allImgs && allImgs.length) {
-        console.log("allImgs2", allImgs);
-        // выделяем цветом
-        for (let i of allImgs) {
-          if (i && i.tagName === "IMG") {
-            i.style.border = "2px solid red";
-          }
-        }
-
-        // потом убираем дубликаты
-        const nI = [...new Set(allImgs.map((i) => i.currentSrc))];
-        chrome.runtime.sendMessage({
-          action: "selectedImages",
-          selectedImages: nI,
-        });
-      }
+      return null;
     }
 
     return null;
@@ -185,13 +191,14 @@ function trackMouseHover() {
  * вкладки и во всех ее фреймах,
  * @param tab {Tab} Объект вкладки браузера
  */
-function execScript(tab) {
+function execScript(tab, siteName, selector) {
   // Выполнить функцию на странице указанной вкладки
   // и передать результат ее выполнения в функцию onResult
   chrome.scripting
     .executeScript({
       target: { tabId: tab.id, allFrames: true },
       func: grabImages,
+      args: [siteName, selector],
     })
     .then((injectionResults) => {
       onResult(injectionResults);
@@ -204,19 +211,109 @@ function execScript(tab) {
  *
  *  @return Array Массив URL
  */
-function grabImages() {
+async function grabImages(siteName, selector)  {
   // joireactor
-  // const images = document.querySelectorAll(".post_content  .image  img");
-  const images = document.querySelectorAll(".post-content .image  img");
-  console.log("images", images);
-  const ar = Array.from(images).map((image) => {
-    const ur = image.getAttribute("src");
-    const baseUrl = ur.split("/pics")[0].match("https:")
-      ? ur.split("/pics")[0]
-      : `https:${ur.split("/pics")[0]}`;
-    return new URL(ur, baseUrl).href;
-  });
-  return ar;
+  if (siteName === "joyreactor") {
+    const images = document.querySelectorAll(".post-content .image  img");
+    const ar = [...new Set(Array.from(images).map((i) => i.src))].map(
+      (image) => {
+        const baseUrl = image.split("/pics")[0].match("https:")
+          ? image.split("/pics")[0]
+          : `https:${image.split("/pics")[0]}`;
+        return new URL(image, baseUrl).href;
+      }
+    );
+    return ar;
+  }
+
+  if (siteName === "vipergirls") {
+    const images = document.querySelectorAll(".postdetails .postcontent  img");
+    const ar = [...new Set(Array.from(images).map((i) => i.src))].map(
+      (image, index) => {
+        function fixImageUrl(image) {
+          if (image.includes("/thumbs/")) {
+            return image
+              .replace("/thumbs/", "/images/")
+              .replace("t1.", "img1.");
+          } else if (image.includes("/t/")) {
+            return image.replace("/t/", "/i/");
+          } else if (image.includes("/th/")) {
+            return `${image.replace("/th/", "/i/")}/babyblossom-${
+              index < 10 ? "0" + index : index
+            }.jpg`;
+          }
+          return image;
+        }
+        return new URL(fixImageUrl(image)).href;
+      }
+    );
+    return ar;
+  }
+
+  if (siteName === "any") {
+    let node;
+    let match = selector.match(
+      /document\.querySelector(All)?\(["'`](.+?)["'`]\)/
+    );
+    console.log(match);
+    if (match) {
+      // Приходит полный вызов — достаём селектор через RegExp
+
+      if (match[1]) {
+        // Было querySelectorAll
+        node = document.querySelectorAll(match[2]);
+      }
+    } else {
+      // Приходит просто селектор
+      node = document.querySelector(match[2]);
+    }
+
+    if (node) {
+      console.log(node);
+      const ar = [
+        ...new Set(
+          Array.from(node).map((i) => i.href || i.dataset.src || i.src)
+        ),
+      ].map((image) => {
+        function fixImageUrl(image) {
+          if (image.includes("/604/")) {
+            return image.replace("/604/", "/1280/");
+          }
+          if (image.includes("_300px")) {
+            return image.replace("_300px", "");
+          }
+          return image;
+        }
+        if (image.includes("blob:https")) {
+        async function blobUrlToBase64(blobUrl) {
+            return fetch(blobUrl)
+              .then((response) => response.blob())
+              .then(
+                (blob) =>
+                  new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                  })
+              );
+          }
+
+         return blobUrlToBase64(image)
+            .then((base64String) => {
+              console.log(base64String); // Вот тут уже base64 строка!
+              return base64String; // если нужно возвращать дальше
+            })
+            .catch(console.error);
+        }
+
+        return new URL(fixImageUrl(image)).href;
+      });
+      return ar;
+    }
+  }
+
+  return [];
 }
 
 /**
@@ -229,6 +326,7 @@ function grabImages() {
  * функции grabImages
  */
 function onResult(frames) {
+  console.log(frames);
   // Если результатов нет
   if (!frames || !frames.length) {
     alert("Could not retrieve images from specified page");
@@ -238,13 +336,13 @@ function onResult(frames) {
   const imageUrls = frames
     .map((frame) => frame.result)
     .reduce((r1, r2) => r1.concat(r2));
-  openImagesPage(imageUrls);
 
-  console.log("imageUrls", imageUrls);
+  if (imageUrls.length > 0) {
+    openImagesPage(imageUrls);
+  }
 }
 
 function openImagesPage(urls) {
-  console.log(urls);
   // Создать новую вкладку браузера с HTML-страницей интерфейса
   chrome.tabs.create(
     { url: "/imagePage/page.html", active: false },
