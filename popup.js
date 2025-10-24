@@ -211,7 +211,7 @@ function execScript(tab, siteName, selector) {
  *
  *  @return Array Массив URL
  */
-async function grabImages(siteName, selector)  {
+async function grabImages(siteName, selector) {
   // joireactor
   if (siteName === "joyreactor") {
     const images = document.querySelectorAll(".post-content .image  img");
@@ -251,65 +251,69 @@ async function grabImages(siteName, selector)  {
   }
 
   if (siteName === "any") {
+    async function blobUrlToBase64(blobUrl) {
+      const response = await fetch(blobUrl);
+      const blob = await response.blob();
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function fixImageUrl(image) {
+      if (image.includes("/604/")) {
+        return image.replace("/604/", "/1280/");
+      }
+      if (image.includes("_300px")) {
+        return image.replace("_300px", "");
+      }
+      return image;
+    }
+
     let node;
     let match = selector.match(
       /document\.querySelector(All)?\(["'`](.+?)["'`]\)/
     );
-    console.log(match);
     if (match) {
       // Приходит полный вызов — достаём селектор через RegExp
-
       if (match[1]) {
-        // Было querySelectorAll
         node = document.querySelectorAll(match[2]);
       }
     } else {
-      // Приходит просто селектор
-      node = document.querySelector(match[2]);
+      node = document.querySelector(selector); // тут исправлено: просто селектор
     }
 
     if (node) {
-      console.log(node);
-      const ar = [
-        ...new Set(
-          Array.from(node).map((i) => i.href || i.dataset.src || i.src)
-        ),
-      ].map((image) => {
-        function fixImageUrl(image) {
-          if (image.includes("/604/")) {
-            return image.replace("/604/", "/1280/");
-          }
-          if (image.includes("_300px")) {
-            return image.replace("_300px", "");
-          }
-          return image;
-        }
-        if (image.includes("blob:https")) {
-        async function blobUrlToBase64(blobUrl) {
-            return fetch(blobUrl)
-              .then((response) => response.blob())
-              .then(
-                (blob) =>
-                  new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(blob);
-                  })
-              );
-          }
+      const elements = node.length !== undefined ? Array.from(node) : [node];
+      const imageUrls = [
+        ...new Set(elements.map((i) => i.href || i.dataset.src || i.src)),
+      ];
 
-         return blobUrlToBase64(image)
-            .then((base64String) => {
-              console.log(base64String); // Вот тут уже base64 строка!
-              return base64String; // если нужно возвращать дальше
-            })
-            .catch(console.error);
-        }
+      // Используйте асинхронное преобразование:
+      const results = await Promise.all(
+        imageUrls.map(async (image) => {
+          if (!image) return null;
+          if (image.includes("blob:https")) {
+            try {
+              return await blobUrlToBase64(image);
+            } catch (e) {
+              console.error(e);
+              return null;
+            }
+          } else {
+            try {
+              return new URL(fixImageUrl(image), window.location.href).href;
+            } catch {
+              return null;
+            }
+          }
+        })
+      );
 
-        return new URL(fixImageUrl(image)).href;
-      });
-      return ar;
+      // Фильтрация невалидных значений
+      return results.filter((r) => !!r);
     }
   }
 
