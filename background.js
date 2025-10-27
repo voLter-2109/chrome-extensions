@@ -1,100 +1,28 @@
-export const statusLoading = {
-  start: "Start",
-  pause: "Pause",
-  cancel: "Cancel",
-  def: null,
-};
-
-// Состояние загрузки
-let downloadState = {
-  status: statusLoading.def,
-  currentIndex: 0,
-  totalFiles: 0,
-  urls: [],
-};
-
 // Обработчик сообщений из контент-скриптов
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log("request", request);
-  downloadState = {
-    ...downloadState,
-    status: request.action,
-    urls: request?.urls || downloadState.urls,
-    totalFiles: request?.urls.length || downloadState.totalFiles,
-  };
-  console.log("downloadState", downloadState);
-  startDownload(request.action);
-  sendResponse({
-    response: "createNewTab",
-  });
-  return true;
+  if (
+    request.action === "start download" &&
+    request.urls &&
+    request.urls.length
+  ) {
+    startDownload(request.urls);
+  }
 });
 
-// Сброс состояния
-// function resetDownloadState() {
-//   downloadState = {
-//     status: statusLoading.def,
-//     currentIndex: 0,
-//     totalFiles: 0,
-//     urls: [],
-//   };
-
-//   chrome.runtime.sendMessage({
-//     action: "changeProgressBar",
-//     total: 0,
-//     current: 0,
-//   });
-
-//   chrome.runtime.sendMessage({
-//     action: "unDisabledOneBtn",
-//     disabled: false,
-//   });
-// }
-
 // Основная функция загрузки
-async function startDownload(action) {
-  if (!downloadState.status) return;
-
-  if (action === statusLoading.cancel) {
-    resetDownloadState();
-  }
-
-  if (action === statusLoading.pause) {
-    downloadState.status = statusLoading.pause;
-  }
-
-  for (let i = downloadState.currentIndex; i < downloadState.urls.length; i++) {
-    if (downloadState.status !== statusLoading.start) {
-      break;
+async function startDownload(urls) {
+  for (let i = 0; i < urls.length; i++) {
+    if (i === urls.length - 1) {
+      chrome.runtime.sendMessage({
+        action: "finishLoading",
+      });
     }
-
+    console.log(i);
     try {
       // Выполняем загрузку
-      await chrome.downloads.download({ url: downloadState.urls[i] });
-      chrome.runtime.sendMessage({
-        action: "changeProgressBar",
-        total: downloadState.totalFiles,
-        current: downloadState.currentIndex + 1,
-      });
-      downloadState.currentIndex = i + 1;
-
-      if (downloadState.currentIndex === downloadState.urls.length) {
-        chrome.runtime.sendMessage({
-          action: "unDisabledOneBtn",
-          disabled: false,
-        });
-        chrome.runtime.sendMessage({
-          action: "changeProgressBar",
-          total: 0,
-          current: 0,
-        });
-
-        chrome.runtime.sendMessage({
-          action: "finishLoading",
-        });
-      }
+      await chrome.downloads.download({ url: urls[i] });
     } catch (error) {
-      console.error(`Ошибка загрузки: ${downloadState.urls[i]}`, error);
+      console.error(`Ошибка загрузки: ${urls[i]}`, error);
     }
   }
 }

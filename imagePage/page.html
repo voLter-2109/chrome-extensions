@@ -6,28 +6,22 @@
     <link rel="stylesheet" type="text/css" href="page.css" />
   </head>
   <body>
+
     <div class="header">
-      <div class="select">
-        <input type="checkbox" id="selectAll" />&nbsp;
-        <span>Выбрать все</span>
-      </div>
+        <button id="selectAllBtn">Select all</button>
 
-      <div class="selectImage"></div>
-
-      <div id="download-container">
-        <div id="status">Waiting to start</div>
-        <progress id="progressBar" value="0" max="100"></progress>
-
-        <button id="pauseBtn">Остановить</button>
-        <button id="resumeBtn">Продолжить</button>
-        <button id="cancelBtn">Отмена</button>
+      <div>
+        <div>totalImage: <span id="totalImage"></div>
+        <div>selectImage: <span id="selectImage"></div>
       </div>
 
       <div class="btn">
         <button id="downloadBtn">Скачать</button>
       </div>
+
     </div>
-    <div class="container"></div>
+
+  <div class="container">
     <script src="/imagePage/page.js"></script>
   </body>
 </html>

@@ -355,7 +355,7 @@ function openImagesPage(urls) {
       setTimeout(() => {
         chrome.tabs.sendMessage(
           tab.id,
-          { action: "createNewTab", urls: urls },
+          { action: "addImagesToContainer on new tab", urls: urls },
           (resp) => {
             // сделать вкладку активной
             chrome.tabs.update(tab.id, { active: true });
