@@ -17,7 +17,6 @@ async function startDownload(urls) {
         action: "finishLoading",
       });
     }
-    console.log(i);
     try {
       // Выполняем загрузку
       await chrome.downloads.download({ url: urls[i] });
@@ -26,3 +25,17 @@ async function startDownload(urls) {
     }
   }
 }
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "getTabId") {
+    if (sender && sender.tab) {
+      sendResponse(sender.tab.id);
+    } else {
+      sendResponse(null);
+    }
+  }
+
+  if (request.action === "test") {
+    console.log(request);
+  }
+});

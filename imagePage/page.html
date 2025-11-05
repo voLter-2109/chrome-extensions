@@ -4,24 +4,43 @@
     <meta charset="utf-8" />
     <title>Image Grabber</title>
     <link rel="stylesheet" type="text/css" href="page.css" />
+    <link rel="stylesheet" type="text/css" href="stypel.reset.css" />
   </head>
   <body>
-
     <div class="header">
-        <button id="selectAllBtn">Select all</button>
+      <button id="selectAllBtn">Select all</button>
 
-      <div>
-        <div>totalImage: <span id="totalImage"></div>
-        <div>selectImage: <span id="selectImage"></div>
-      </div>
+      <ul class="selectInformation">
+        <li><strong>Select image:</strong></li>
+        <li><h3 id="selectImage">0</h3></li>
+        <li>/</li>
+        <li><h3 id="totalImage">0</h3></li>
+      </ul>
+
+      <ul class="navlink">
+        <li>Save</li>
+        <li>Reset</li>
+        <li>Test</li>
+      </ul>
 
       <div class="btn">
         <button id="downloadBtn">Скачать</button>
       </div>
-
     </div>
 
-  <div class="container">
+    <div class="container"></div>
+    <div class="image-shower-main-window">
+      <div class="image-shower-view-area">
+        <img src="" alt="" id="image-shower-img-element" />
+        <div id="image-shower-controls">
+          <button class="image-shower-controls-btn-close">Close</button>
+          <button class="image-shower-controls-btn-fullscreen">
+            Full screen
+          </button>
+          <button class="image-shower-controls-btn-download">Download</button>
+        </div>
+      </div>
+    </div>
     <script src="/imagePage/page.js"></script>
   </body>
 </html>
