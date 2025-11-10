@@ -23,6 +23,19 @@
         <li>Test</li>
       </ul>
 
+      <label>
+        Скачать архивом?
+        <input
+          type="checkbox"
+          id="checkLoadingZip"
+          class="tooltip"
+          data-tooltip="При скачивании большого кол-ва файлов, вкладки могут подвисать,
+        рекомендуется скачивать файлы архивом"
+        />
+      </label>
+
+      <div id="status"></div>
+
       <div class="btn">
         <button id="downloadBtn">Скачать</button>
       </div>
@@ -41,6 +54,8 @@
         </div>
       </div>
     </div>
+    <script src="/imagePage/jszip.min.js"></script>
+
     <script src="/imagePage/page.js"></script>
   </body>
 </html>

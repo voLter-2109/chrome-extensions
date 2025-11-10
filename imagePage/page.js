@@ -12,6 +12,8 @@
   const totalImage = document.getElementById("totalImage");
   const selectImage = document.getElementById("selectImage");
 
+  const checkLoadingZip = document.getElementById("checkLoadingZip");
+
   const db = {
     totalImage: 0,
     selectImage: 0,
@@ -29,6 +31,84 @@
   preview.addEventListener("click", (event) => {
     event.target.classList.remove("open");
   });
+
+  function delay(ms) {
+    return new Promise((res) => setTimeout(res, ms));
+  }
+
+  async function startDownload(urls) {
+    for (let i = 0; i < urls.length; i++) {
+      try {
+        await chrome.downloads.download({
+          url: urls[i],
+          conflictAction: "uniquify",
+        });
+        // Ждём   секунды между скачиваниями, КРОМЕ последнего
+        if (i < urls.length - 1) {
+          await delay(500);
+        }
+      } catch (error) {
+        console.error(`Ошибка загрузки: ${urls[i]}`, error);
+      }
+    }
+
+    toggleCheckedSelectItem(false);
+    return toggleDisabledBtn();
+  }
+
+  async function downloadImagesAsZip(urls, statusEl = null) {
+    const zip = new JSZip();
+    let counter = 1;
+
+    // Функция статуса
+    const setStatus = (msg) => {
+      if (statusEl) statusEl.textContent = msg;
+      console.log(msg);
+    };
+
+    // Загрузка всех картинок
+    for (const url of urls) {
+      try {
+        setStatus(`Скачивается (${counter}/${urls.length})`);
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const ext = url.split(".").pop().split(/\#|\?/)[0];
+        const fileName = `image${counter}.${ext || "jpg"}`;
+        zip.file(fileName, blob);
+        counter++;
+      } catch (e) {
+        setStatus(`Ошибка загрузки: ${url}`);
+        console.error("Ошибка при загрузке", url, e);
+      }
+    }
+
+    // Индикатор упаковки ZIP
+    setStatus("Упаковка в ZIP...");
+    const content = await zip.generateAsync(
+      { type: "blob" },
+      // onUpdate - покажет прогресс %
+      ({ percent }) => {
+        let p = Math.round(percent);
+        setStatus(`Упаковка в ZIP: ${p}%`);
+      }
+    );
+
+    // Скачивание
+    setStatus("Скачивание ZIP...");
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(content);
+    link.download = new Date().getTime();
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+
+    setStatus("Готово!");
+
+    // Сообщаем о завершении массовой загрузки
+    toggleCheckedSelectItem(false);
+    return toggleDisabledBtn();
+  }
 
   /**
    * создаем разметку для каждого изображения
@@ -180,38 +260,51 @@
   downloadBtn.addEventListener("click", () => {
     const urls = getSelectedUrls();
 
-    if (urls.length)
-      chrome.runtime.sendMessage({
-        action: "start download",
-        urls: urls,
-      });
+    if (urls.length && checkLoadingZip.checked)
+      downloadImagesAsZip(urls, document.getElementById("status"));
+    if (urls.length && !checkLoadingZip.checked) startDownload(urls);
   });
 
-  window.addEventListener("DOMContentLoaded", () => {
+  // Получение активной вкладки текущего окна
+  function getActiveTab() {
+    return new Promise((resolve, reject) => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (chrome.runtime.lastError) {
+          return reject(chrome.runtime.lastError);
+        }
+        if (tabs.length > 0) {
+          resolve(tabs[0]);
+        } else {
+          reject("No active tabs");
+        }
+      });
+    });
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => {
     // 1. Получаем параметры текущего URL (location.search)
     const params = new URLSearchParams(window.location.search);
     const uuid = params.get("uuid");
     if (!uuid) return; // Ничего не делать, если uuid не найден
 
+    const tab = await getActiveTab();
+
     // 2. Достаем данные из storage по uuid
     chrome.storage.local.get([uuid], function (result) {
       const data = result[uuid];
+
       if (data && Array.isArray(data.urls) && data.urls.length) {
         addImagesToContainer(data.urls);
+
+        chrome.storage.local.get([uuid], function (result) {
+          chrome.storage.local.set({
+            [uuid]: {
+              ...(result[uuid] || {}),
+              windowId: tab.windowId,
+            },
+          });
+        });
       }
     });
-  });
-
-  // Обработчик сообщений
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    // if (isInitialized) return; // блокируем повтор
-    // if (request.action === "addImagesToContainer on new tab") {
-    //   isInitialized = true;
-    //   return addImagesToContainer(request.urls);
-    // }
-    if (request.action === "finishLoading") {
-      toggleCheckedSelectItem(false);
-      return toggleDisabledBtn();
-    }
   });
 })();

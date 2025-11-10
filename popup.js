@@ -113,9 +113,7 @@
           chrome.windows.update(tab.windowId, { focused: true });
         });
       } else {
-        chrome.tabs.create({ url }, function (newTab) {
-          chrome.windows.update(newTab.windowId, { focused: true });
-        });
+        chrome.tabs.create({ url });
       }
     });
   }
@@ -317,6 +315,7 @@
       return {
         uuid,
         urls: urls,
+        windowId: null,
         totalImage: urls.length,
         date: new Date().getTime(),
         main_site_name: window.location.origin,
@@ -431,17 +430,18 @@
         //  асинхронное преобразование:
         const results = await Promise.all(
           imageUrls.map(async (image) => {
-            if (!image.urls) return null;
-            if (image.includes("blob:https")) {
+            const src = typeof image === "string" ? image : image?.src;
+            if (!src) return null;
+            if (src.includes("blob:https")) {
               try {
-                return await blobUrlToBase64(image);
+                return await blobUrlToBase64(src);
               } catch (e) {
                 console.error(e);
                 return null;
               }
             } else {
               try {
-                return new URL(fixImageUrl(image), window.location.href).href;
+                return new URL(fixImageUrl(src), window.location.href).href;
               } catch {
                 return null;
               }
@@ -449,6 +449,7 @@
           })
         );
 
+        console.log(results);
         // Фильтрация невалидных значений
         return returnData(results.filter((r) => !!r));
       }
