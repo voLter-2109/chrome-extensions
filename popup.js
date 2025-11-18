@@ -4,6 +4,7 @@
   const showNewTabWithImage = document.getElementById("showSelectImage");
   const selectImage = document.getElementById("selectImage");
   const container = document.getElementById("preview");
+  const previewContainer = document.getElementById("preview_container");
   const vipergirls = document.getElementById("vipergirls");
   const selectSelector = document.getElementById("selectSelector");
   const scrollSelectImage = document.getElementById("scrollSelectImage");
@@ -185,13 +186,13 @@
  */
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "selectedImages") {
-      container.innerHTML = "";
+      previewContainer.innerHTML = "";
       request.selectedImages.forEach((src) => {
         const img = document.createElement("img");
         img.src = src;
         img.style.maxWidth = "80px";
         img.style.margin = "5px";
-        container.appendChild(img);
+        previewContainer.appendChild(img);
       });
     }
   });
@@ -263,7 +264,6 @@
             ...document.querySelectorAll(`.${event.target.classList[0]}`),
           ].map((i) => i.src),
         });
-        return null;
       }
 
       return null;
@@ -527,3 +527,6 @@
     return saveUniqueByUrl(date);
   }
 })();
+
+
+
