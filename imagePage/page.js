@@ -45,7 +45,7 @@
         });
         // Ждём   секунды между скачиваниями, КРОМЕ последнего
         if (i < urls.length - 1) {
-          await delay(500);
+          await delay(0);
         }
       } catch (error) {
         console.error(`Ошибка загрузки: ${urls[i]}`, error);

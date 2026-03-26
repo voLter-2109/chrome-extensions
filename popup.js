@@ -140,7 +140,7 @@
           if (chrome.runtime.lastError) {
             console.error(
               "Error clearing local storage:",
-              chrome.runtime.lastError
+              chrome.runtime.lastError,
             );
           } else {
             console.log("Local storage cleared successfully.");
@@ -332,14 +332,14 @@
             ? image.split("/pics")[0]
             : `https:${image.split("/pics")[0]}`;
           return new URL(image, baseUrl).href;
-        }
+        },
       );
       return returnData(ar);
     }
 
     if (siteName === "vipergirls") {
       const images = document.querySelectorAll(
-        ".postdetails .postcontent  img"
+        ".postdetails .postcontent  img",
       );
       const ar = [...new Set(Array.from(images).map((i) => i.src))].map(
         (image, index) => {
@@ -350,6 +350,8 @@
                 .replace("t1.", "img1.");
             } else if (image.includes("/t/")) {
               return image.replace("/t/", "/i/");
+            } else if (image.includes("/:small/")) {
+              return image.replace("/:small/", "/:large/");
             } else if (image.includes("/th/")) {
               return `${image.replace("/th/", "/i/")}/babyblossom-${
                 index < 10 ? "0" + index : index
@@ -358,7 +360,7 @@
             return image;
           }
           return new URL(fixImageUrl(image)).href;
-        }
+        },
       );
       return returnData(ar);
     }
@@ -366,7 +368,7 @@
     if (siteName === "any") {
       let node;
       let match = selector.match(
-        /document\.querySelector(All)?\(["'`](.+?)["'`]\)/
+        /document\.querySelector(All)?\(["'`](.+?)["'`]\)/,
       );
 
       if (match) {
@@ -423,7 +425,7 @@
           ...new Set(
             elements.map((i) => {
               return getImageUrl(i);
-            })
+            }),
           ),
         ];
 
@@ -446,7 +448,7 @@
                 return null;
               }
             }
-          })
+          }),
         );
 
         console.log(results);
@@ -488,13 +490,13 @@
         (item) =>
           item &&
           Array.isArray(item.urls) &&
-          JSON.stringify(item.urls) === JSON.stringify(date.urls)
+          JSON.stringify(item.urls) === JSON.stringify(date.urls),
       );
 
       if (duplicateItem) {
         // Такой url уже есть, ничего не сохраняем
         const openOrNot = confirm(
-          "Дублирование: запись с таким url уже есть в истории. Открыть заново?"
+          "Дублирование: запись с таким url уже есть в истории. Открыть заново?",
         );
         if (openOrNot) {
           chrome.runtime.sendMessage({
@@ -527,6 +529,3 @@
     return saveUniqueByUrl(date);
   }
 })();
-
-
-
