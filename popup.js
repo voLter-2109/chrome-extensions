@@ -382,12 +382,17 @@
 
       if (Boolean(node.length)) {
         function fixImageUrl(image) {
+          console.log(image);
           if (image.includes("/604/")) {
             return image.replace("/604/", "/1280/");
           }
           if (image.includes("=540")) {
             return image.replace("=540", "=1280");
           }
+          if (image.includes(":small")) {
+            return image.replace(/:small/, ":large");
+          }
+
           if (image.includes("_300px")) {
             return image.replace("_300px", "");
           }
